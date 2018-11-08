@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+
+import os
+import pickle
+import sys
+import smtplib
+import subprocess
+
+from getpass import getpass
+from pathlib import Path
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+
+datafile_location = str(Path.home()) + '/.local/share/setoki/'
+datafile_name = 'mail.dat'
+
+def convert_to_mobi(filepath):
+    devnull = open('/dev/null', 'w')
+    subprocess.call(["./bin/kindlegen", filepath], stdout=devnull)
+
+    converted_file = os.path.splitext(filepath)[0] + '.mobi'
+
+    try:
+        Path(converted_file).is_file()
+    except FileNotFoundError:
+        sys.exit('Converting file failed')
+
+    print('Converted file successfully')
+
+    return converted_file
+
+def send_to_kindle(credentials, filename):
+    fo = open(filename, "rb")
+    filecontent = fo.read()
+    fo.close()
+
+    msg = MIMEMultipart()
+    msg['From'] = credentials['sender']
+    msg['To'] = credentials['receiver']
+
+    attachment = MIMEApplication(filecontent)
+    attachment.add_header('Content-Disposition', 'attachment', filename=filename)
+
+    msg.attach(attachment)
+
+    try:
+       server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+       server.ehlo()
+       server.login(credentials['sender'], credentials['pwd'])
+       server.sendmail(credentials['sender'], credentials['receiver'], msg.as_string())
+       print("Successfully sent email to kindle")
+    except SMTPException:
+       print("Error: unable to send email to kindle")
+
+def get_mail_credentials():
+    data = {}
+
+    try:
+        with open(datafile_location + datafile_name, 'rb') as f:
+            data = pickle.load(f)
+    except:
+        pass
+
+    if len(data) == 0:
+        data['sender'] = input('Email address (gmail): ')
+        data['pwd'] = getpass('Email password: ')
+        data['receiver'] = input('Kindle email: ')
+
+        try:
+            with open(datafile_location + datafile_name, 'wb') as f:
+                pickle.dump(data, f)
+        except:
+            sys.exit('An error occurred while saving data.')
+
+    return data
+
+def check_file_existence(filepath):
+    try:
+        file_exist = Path(filepath).is_file()
+    except FileNotFoundError:
+        sys.exit('File not found')
+
+    return file_exist
+
+def is_valid_extension(filepath):
+    extension = os.path.splitext(filepath)[1]
+
+    if extension not in ['.odf', '.html', '.epub', '.zip']:
+        sys.exit('Invalid file type')
+
+def main():
+    Path(datafile_location).mkdir(parents=True, exist_ok=True)
+
+    if len(sys.argv) < 2:
+        sys.exit('You must select a file')
+
+    filepath = os.path.abspath(sys.argv[1])
+
+    check_file_existence(filepath)
+    is_valid_extension(filepath)
+
+    credentials = get_mail_credentials()
+    converted_file = convert_to_mobi(filepath)
+
+    send_to_kindle(credentials, converted_file)
+
+    os.remove(converted_file)
+
+if __name__ == '__main__':
+    main()
