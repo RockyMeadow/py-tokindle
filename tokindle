@@ -11,8 +11,8 @@ from pathlib import Path
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 
-datafile_location = str(Path.home()) + '/.local/share/setoki/'
-datafile_name = 'mail.dat'
+DATAFILE_LOCATION = str(Path.home()) + '/.local/share/setoki/'
+DATAFILE_NAME = 'mail.dat'
 
 def convert_to_mobi(filepath):
     devnull = open('/dev/null', 'w')
@@ -25,14 +25,14 @@ def convert_to_mobi(filepath):
     except FileNotFoundError:
         sys.exit('Converting file failed')
 
-    print('Converted file successfully')
+    print'Converted file successfully'
 
     return converted_file
 
 def send_to_kindle(credentials, filename):
-    fo = open(filename, "rb")
-    filecontent = fo.read()
-    fo.close()
+    fileopen = open(filename, "rb")
+    filecontent = fileopen.read()
+    fileopen.close()
 
     msg = MIMEMultipart()
     msg['From'] = credentials['sender']
@@ -44,20 +44,20 @@ def send_to_kindle(credentials, filename):
     msg.attach(attachment)
 
     try:
-       server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-       server.ehlo()
-       server.login(credentials['sender'], credentials['pwd'])
-       server.sendmail(credentials['sender'], credentials['receiver'], msg.as_string())
-       print("Successfully sent email to kindle")
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.ehlo()
+        server.login(credentials['sender'], credentials['pwd'])
+        server.sendmail(credentials['sender'], credentials['receiver'], msg.as_string())
+        print'Successfully sent email to kindle'
     except SMTPException:
-       print("Error: unable to send email to kindle")
+        print'Error: unable to send email to kindle'
 
 def get_mail_credentials():
     data = {}
 
     try:
-        with open(datafile_location + datafile_name, 'rb') as f:
-            data = pickle.load(f)
+        with open(DATAFILE_LOCATION + DATAFILE_NAME, 'rb') as file_data:
+            data = pickle.load(file_data)
     except:
         pass
 
@@ -67,8 +67,8 @@ def get_mail_credentials():
         data['receiver'] = input('Kindle email: ')
 
         try:
-            with open(datafile_location + datafile_name, 'wb') as f:
-                pickle.dump(data, f)
+            with open(DATAFILE_LOCATION + DATAFILE_NAME, 'wb') as file_data:
+                pickle.dump(data, file_data)
         except:
             sys.exit('An error occurred while saving data.')
 
@@ -89,7 +89,7 @@ def is_valid_extension(filepath):
         sys.exit('Invalid file type')
 
 def main():
-    Path(datafile_location).mkdir(parents=True, exist_ok=True)
+    Path(DATAFILE_LOCATION).mkdir(parents=True, exist_ok=True)
 
     if len(sys.argv) < 2:
         sys.exit('You must select a file')
